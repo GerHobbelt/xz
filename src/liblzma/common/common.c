@@ -1,12 +1,11 @@
+// SPDX-License-Identifier: 0BSD
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 /// \file       common.c
 /// \brief      Common functions needed in many places in liblzma
 //
 //  Author:     Lasse Collin
-//
-//  This file has been put into the public domain.
-//  You can do whatever you want with this file.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -35,7 +34,8 @@ lzma_version_string(void)
 // Memory allocation //
 ///////////////////////
 
-extern void * lzma_attribute((__malloc__)) lzma_attr_alloc_size(1)
+lzma_attr_alloc_size(1)
+extern void *
 lzma_alloc(size_t size, const lzma_allocator *allocator)
 {
 	// Some malloc() variants return NULL if called with size == 0.
@@ -53,7 +53,8 @@ lzma_alloc(size_t size, const lzma_allocator *allocator)
 }
 
 
-extern void * lzma_attribute((__malloc__)) lzma_attr_alloc_size(1)
+lzma_attr_alloc_size(1)
+extern void *
 lzma_alloc_zero(size_t size, const lzma_allocator *allocator)
 {
 	// Some calloc() variants return NULL if called with size == 0.
@@ -288,13 +289,21 @@ lzma_code(lzma_stream *strm, lzma_action action)
 			strm->next_in, &in_pos, strm->avail_in,
 			strm->next_out, &out_pos, strm->avail_out, action);
 
-	strm->next_in += in_pos;
-	strm->avail_in -= in_pos;
-	strm->total_in += in_pos;
+	// Updating next_in and next_out has to be skipped when they are NULL
+	// to avoid null pointer + 0 (undefined behavior). Do this by checking
+	// in_pos > 0 and out_pos > 0 because this way NULL + non-zero (a bug)
+	// will get caught one way or other.
+	if (in_pos > 0) {
+		strm->next_in += in_pos;
+		strm->avail_in -= in_pos;
+		strm->total_in += in_pos;
+	}
 
-	strm->next_out += out_pos;
-	strm->avail_out -= out_pos;
-	strm->total_out += out_pos;
+	if (out_pos > 0) {
+		strm->next_out += out_pos;
+		strm->avail_out -= out_pos;
+		strm->total_out += out_pos;
+	}
 
 	strm->internal->avail_in = strm->avail_in;
 
@@ -374,6 +383,20 @@ lzma_end(lzma_stream *strm)
 }
 
 
+#ifdef HAVE_SYMBOL_VERSIONS_LINUX
+// This is for compatibility with binaries linked against liblzma that
+// has been patched with xz-5.2.2-compat-libs.patch from RHEL/CentOS 7.
+LZMA_SYMVER_API("lzma_get_progress@XZ_5.2.2",
+	void, lzma_get_progress_522)(lzma_stream *strm,
+		uint64_t *progress_in, uint64_t *progress_out) lzma_nothrow
+		__attribute__((__alias__("lzma_get_progress_52")));
+
+LZMA_SYMVER_API("lzma_get_progress@@XZ_5.2",
+	void, lzma_get_progress_52)(lzma_stream *strm,
+		uint64_t *progress_in, uint64_t *progress_out) lzma_nothrow;
+
+#define lzma_get_progress lzma_get_progress_52
+#endif
 extern LZMA_API(void)
 lzma_get_progress(lzma_stream *strm,
 		uint64_t *progress_in, uint64_t *progress_out)

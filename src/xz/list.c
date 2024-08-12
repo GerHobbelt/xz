@@ -1,12 +1,11 @@
+// SPDX-License-Identifier: 0BSD
+
 ///////////////////////////////////////////////////////////////////////////////
 //
 /// \file       list.c
 /// \brief      Listing information about .xz files
 //
 //  Author:     Lasse Collin
-//
-//  This file has been put into the public domain.
-//  You can do whatever you want with this file.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -52,9 +51,12 @@ typedef struct {
 	uint64_t memusage;
 
 	/// The filter chain of this Block in human-readable form
-	char filter_chain[FILTERS_STR_SIZE];
+	char *filter_chain;
 
 } block_header_info;
+
+#define BLOCK_HEADER_INFO_INIT { .filter_chain = NULL }
+#define block_header_info_end(bhi) free((bhi)->filter_chain)
 
 
 /// Strings ending in a colon. These are used for lines like
@@ -273,7 +275,7 @@ init_headings(void)
 		// If the translated string is wider than the minimum width
 		// set at compile time, increase the width.
 		if ((size_t)(headings[HEADING_CHECK].columns) < w)
-			headings[HEADING_CHECK].columns = w;
+			headings[HEADING_CHECK].columns = (int)w;
 	}
 
 	for (unsigned i = 0; i < ARRAY_SIZE(headings); ++i) {
@@ -288,7 +290,7 @@ init_headings(void)
 		// If the translated string is wider than the minimum width
 		// set at compile time, increase the width.
 		if ((size_t)(headings[i].columns) < w)
-			headings[i].columns = w;
+			headings[i].columns = (int)w;
 
 		// Calculate the field width for printf("%*s") so that
 		// the string uses .columns number of columns on a terminal.
@@ -363,7 +365,7 @@ parse_indexes(xz_file_info *xfi, file_pair *pair)
 			hardware_memlimit_get(MODE_LIST),
 			(uint64_t)(pair->src_st.st_size));
 	if (ret != LZMA_OK) {
-		message_error("%s: %s", pair->src_name, message_strm(ret));
+		message_error(_("%s: %s"), pair->src_name, message_strm(ret));
 		return true;
 	}
 
@@ -409,7 +411,7 @@ parse_indexes(xz_file_info *xfi, file_pair *pair)
 		}
 
 		default:
-			message_error("%s: %s", pair->src_name,
+			message_error(_("%s: %s"), pair->src_name,
 					message_strm(ret));
 
 			// If the error was too low memory usage limit,
@@ -471,7 +473,7 @@ parse_block_header(file_pair *pair, const lzma_index_iter *iter,
 		break;
 
 	case LZMA_OPTIONS_ERROR:
-		message_error("%s: %s", pair->src_name,
+		message_error(_("%s: %s"), pair->src_name,
 				message_strm(LZMA_OPTIONS_ERROR));
 		return true;
 
@@ -523,9 +525,7 @@ parse_block_header(file_pair *pair, const lzma_index_iter *iter,
 
 	case LZMA_DATA_ERROR:
 		// Free the memory allocated by lzma_block_header_decode().
-		for (size_t i = 0; filters[i].id != LZMA_VLI_UNKNOWN; ++i)
-			free(filters[i].options);
-
+		lzma_filters_free(filters, NULL);
 		goto data_error;
 
 	default:
@@ -543,32 +543,60 @@ parse_block_header(file_pair *pair, const lzma_index_iter *iter,
 		xfi->memusage_max = bhi->memusage;
 
 	// Determine the minimum XZ Utils version that supports this Block.
+	//   - RISC-V filter needs 5.6.0.
 	//
-	// Currently the only thing that 5.0.0 doesn't support is empty
-	// LZMA2 Block. This decoder bug was fixed in 5.0.2.
-	{
+	//   - ARM64 filter needs 5.4.0.
+	//
+	//   - 5.0.0 doesn't support empty LZMA2 streams and thus empty
+	//     Blocks that use LZMA2. This decoder bug was fixed in 5.0.2.
+	if (xfi->min_version < 50060002U) {
+		for (size_t i = 0; filters[i].id != LZMA_VLI_UNKNOWN; ++i) {
+			if (filters[i].id == LZMA_FILTER_RISCV) {
+				xfi->min_version = 50060002U;
+				break;
+			}
+		}
+	}
+
+	if (xfi->min_version < 50040002U) {
+		for (size_t i = 0; filters[i].id != LZMA_VLI_UNKNOWN; ++i) {
+			if (filters[i].id == LZMA_FILTER_ARM64) {
+				xfi->min_version = 50040002U;
+				break;
+			}
+		}
+	}
+
+	if (xfi->min_version < 50000022U) {
 		size_t i = 0;
 		while (filters[i + 1].id != LZMA_VLI_UNKNOWN)
 			++i;
 
 		if (filters[i].id == LZMA_FILTER_LZMA2
-				&& iter->block.uncompressed_size == 0
-				&& xfi->min_version < 50000022U)
+				&& iter->block.uncompressed_size == 0)
 			xfi->min_version = 50000022U;
 	}
 
 	// Convert the filter chain to human readable form.
-	message_filters_to_str(bhi->filter_chain, filters, false);
+	const lzma_ret str_ret = lzma_str_from_filters(
+			&bhi->filter_chain, filters,
+			LZMA_STR_DECODER | LZMA_STR_GETOPT_LONG, NULL);
 
 	// Free the memory allocated by lzma_block_header_decode().
-	for (size_t i = 0; filters[i].id != LZMA_VLI_UNKNOWN; ++i)
-		free(filters[i].options);
+	lzma_filters_free(filters, NULL);
+
+	// Check if the stringification succeeded.
+	if (str_ret != LZMA_OK) {
+		message_error(_("%s: %s"), pair->src_name,
+				message_strm(str_ret));
+		return true;
+	}
 
 	return false;
 
 data_error:
 	// Show the error message.
-	message_error("%s: %s", pair->src_name,
+	message_error(_("%s: %s"), pair->src_name,
 			message_strm(LZMA_DATA_ERROR));
 	return true;
 }
@@ -858,9 +886,6 @@ print_info_adv(xz_file_info *xfi, file_pair *pair)
 	// Cache the verbosity level to a local variable.
 	const bool detailed = message_verbosity_get() >= V_DEBUG;
 
-	// Information collected from Block Headers
-	block_header_info bhi;
-
 	// Print information about the Blocks but only if there is
 	// at least one Block.
 	if (lzma_index_block_count(xfi->idx) > 0) {
@@ -910,8 +935,11 @@ print_info_adv(xz_file_info *xfi, file_pair *pair)
 
 		// Iterate over the Blocks.
 		while (!lzma_index_iter_next(&iter, LZMA_INDEX_ITER_BLOCK)) {
+			// If in detailed mode, collect the information from
+			// Block Header before starting to print the next line.
+			block_header_info bhi = BLOCK_HEADER_INFO_INIT;
 			if (detailed && parse_details(pair, &iter, &bhi, xfi))
-					return true;
+				return true;
 
 			const char *cols1[4] = {
 				uint64_to_str(iter.stream.number, 0),
@@ -995,6 +1023,7 @@ print_info_adv(xz_file_info *xfi, file_pair *pair)
 			}
 
 			putchar('\n');
+			block_header_info_end(&bhi);
 		}
 	}
 
@@ -1052,9 +1081,9 @@ print_info_robot(xz_file_info *xfi, file_pair *pair)
 				iter.stream.padding);
 
 		lzma_index_iter_rewind(&iter);
-		block_header_info bhi;
 
 		while (!lzma_index_iter_next(&iter, LZMA_INDEX_ITER_BLOCK)) {
+			block_header_info bhi = BLOCK_HEADER_INFO_INIT;
 			if (message_verbosity_get() >= V_DEBUG
 					&& parse_details(
 						pair, &iter, &bhi, xfi))
@@ -1085,6 +1114,7 @@ print_info_robot(xz_file_info *xfi, file_pair *pair)
 						bhi.filter_chain);
 
 			putchar('\n');
+			block_header_info_end(&bhi);
 		}
 	}
 
@@ -1148,6 +1178,10 @@ print_totals_basic(void)
 				totals.uncompressed_size),
 			checks);
 
+#if defined(__sun) && (defined(__GNUC__) || defined(__clang__))
+#	pragma GCC diagnostic push
+#	pragma GCC diagnostic ignored "-Wformat-nonliteral"
+#endif
 	// Since we print totals only when there are at least two files,
 	// the English message will always use "%s files". But some other
 	// languages need different forms for different plurals so we
@@ -1159,6 +1193,9 @@ print_totals_basic(void)
 			totals.files <= ULONG_MAX ? totals.files
 				: (totals.files % 1000000) + 1000000),
 			uint64_to_str(totals.files, 0));
+#if defined(__sun) && (defined(__GNUC__) || defined(__clang__))
+#	pragma GCC diagnostic pop
+#endif
 
 	return;
 }
@@ -1245,9 +1282,21 @@ list_totals(void)
 extern void
 list_file(const char *filename)
 {
-	if (opt_format != FORMAT_XZ && opt_format != FORMAT_AUTO)
-		message_fatal(_("--list works only on .xz files "
+	if (opt_format != FORMAT_XZ && opt_format != FORMAT_AUTO) {
+		// The 'lzmainfo' message is printed only when --format=lzma
+		// is used (it is implied if using "lzma" as the command
+		// name). Thus instead of using message_fatal(), print
+		// the messages separately and then call tuklib_exit()
+		// like message_fatal() does.
+		message(V_ERROR, _("--list works only on .xz files "
 				"(--format=xz or --format=auto)"));
+
+		if (opt_format == FORMAT_LZMA)
+			message(V_ERROR,
+				_("Try 'lzmainfo' with .lzma files."));
+
+		tuklib_exit(E_ERROR, E_ERROR, false);
+	}
 
 	message_filename(filename);
 

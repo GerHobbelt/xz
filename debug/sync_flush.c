@@ -59,8 +59,12 @@ encode(size_t size, lzma_action action)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_debug_sync_flush_main
+#endif
+
 int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	file_in = argc > 1 ? fopen(argv[1], "rb") : stdin;
 

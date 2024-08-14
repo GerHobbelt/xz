@@ -152,8 +152,12 @@ write_text(FILE *file)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_test_compress_files_main
+#endif
+
 int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	maybe_create_test(argc, argv, abc);
 	maybe_create_test(argc, argv, random);

@@ -86,6 +86,10 @@ calc_clrem(uint64_t p, unsigned bits)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_crc_clmul_consts_gen_main
+#endif
+
 extern int
 main(void)
 {

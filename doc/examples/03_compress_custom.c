@@ -172,6 +172,10 @@ compress(lzma_stream *strm, FILE *infile, FILE *outfile)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_demo_compress_custom_main
+#endif
+
 extern int
 main(void)
 {

@@ -360,8 +360,12 @@ test_lzma_get_check_mt(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_test_check_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	tuktest_start(argc, argv);
 

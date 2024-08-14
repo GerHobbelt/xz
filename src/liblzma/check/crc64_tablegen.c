@@ -80,6 +80,10 @@ print_crc64_table(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_crc64_tablegen_main
+#endif
+
 int
 main(void)
 {

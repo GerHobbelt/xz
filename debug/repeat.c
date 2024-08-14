@@ -17,8 +17,12 @@
 #include <stdio.h>
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_debug_repeat_main
+#endif
+
 int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	if (argc != 3) {
 		fprintf(stderr, "Usage: %s COUNT STRING\n", argv[0]);

@@ -672,8 +672,12 @@ test_lzma_str_list_filters(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_test_filter_str_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	tuktest_start(argc, argv);
 

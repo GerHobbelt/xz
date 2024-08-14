@@ -105,6 +105,10 @@ print_lz_table(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_crc32_tablegen_main
+#endif
+
 int
 main(void)
 {

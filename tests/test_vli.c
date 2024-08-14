@@ -312,8 +312,12 @@ test_lzma_vli_decode(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_test_vli_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	tuktest_start(argc, argv);
 	tuktest_run(test_lzma_vli_size);

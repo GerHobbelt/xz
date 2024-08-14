@@ -84,6 +84,10 @@ print_price_table(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_price_tablegen_main
+#endif
+
 int
 main(void)
 {

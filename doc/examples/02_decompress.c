@@ -239,8 +239,12 @@ decompress(lzma_stream *strm, const char *inname, FILE *infile, FILE *outfile)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_decompress_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	if (argc <= 1) {
 		fprintf(stderr, "Usage: %s FILES...\n", argv[0]);

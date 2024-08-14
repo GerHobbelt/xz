@@ -258,8 +258,12 @@ compress(lzma_stream *strm, FILE *infile, FILE *outfile)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_compress_easy_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	// Get the preset number from the command line.
 	uint32_t preset = get_preset(argc, argv);

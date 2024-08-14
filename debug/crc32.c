@@ -14,6 +14,10 @@
 #include <stdio.h>
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_debug_crc32_main
+#endif
+
 int
 main(void)
 {

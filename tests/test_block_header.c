@@ -503,8 +503,12 @@ test_lzma_block_header_decode(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_test_block_header_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	tuktest_start(argc, argv);
 

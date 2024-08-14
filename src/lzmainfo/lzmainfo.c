@@ -169,6 +169,10 @@ lzmainfo(const char *name, FILE *f)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_lzmainfo_main
+#endif
+
 extern int
 main(int argc, char **argv)
 {

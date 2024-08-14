@@ -245,7 +245,7 @@ static unsigned tuktest_stats[4] = { 0, 0, 0, 0 };
 
 // Copy of argc and argv from main(). These are set by tuktest_start().
 static int tuktest_argc = 0;
-static char **tuktest_argv = NULL;
+static const char **tuktest_argv = NULL;
 
 // Name of the currently-running test. This exists because it's nice
 // to print the main test function name even if the failing test-assertion

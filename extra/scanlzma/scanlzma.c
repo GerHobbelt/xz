@@ -53,7 +53,12 @@ int find_lzma_header(unsigned char *buf) {
 		    || (memcmp (buf + 5, "\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF", 8) == 0)));
 }
 
-int main(int argc, char *argv[]) {
+
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_scanlzma_main
+#endif
+
+int main(int argc, const char **argv) {
 	unsigned char buf[BUFSIZE];
 	int ret, i, numlzma, blocks=0;
 

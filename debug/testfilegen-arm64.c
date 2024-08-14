@@ -53,6 +53,10 @@ putadrp32(uint32_t imm)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_debug_testfilegen_main
+#endif
+
 extern int
 main(void)
 {

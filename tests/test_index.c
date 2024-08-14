@@ -1758,8 +1758,12 @@ test_lzma_index_buffer_decode(void)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_test_index_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	tuktest_start(argc, argv);
 	generate_index_decode_buffer();

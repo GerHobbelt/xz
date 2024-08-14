@@ -27,6 +27,10 @@ getbin(int x)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_debug_hex2bin_main
+#endif
+
 int
 main(void)
 {

@@ -388,8 +388,12 @@ error:
 #endif
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_xzdec_main
+#endif
+
 int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 #ifdef HAVE_PLEDGE
 	// OpenBSD's pledge(2) sandbox.

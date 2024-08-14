@@ -17,6 +17,10 @@
 #include "fastpos.h"
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_fastpos_tablegen_main
+#endif
+
 int
 main(void)
 {

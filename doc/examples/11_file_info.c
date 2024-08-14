@@ -172,8 +172,12 @@ print_file_size(lzma_stream *strm, FILE *infile, const char *filename)
 }
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_file_info_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	bool success = true;
 	lzma_stream strm = LZMA_STREAM_INIT;

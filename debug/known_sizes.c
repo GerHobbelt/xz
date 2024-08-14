@@ -29,6 +29,10 @@
 #define BUFFER_SIZE (1U << 20)
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_debug_known_sizes_main
+#endif
+
 int
 main(void)
 {

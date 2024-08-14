@@ -449,8 +449,12 @@ test_invalid_memlimit(void)
 #endif
 
 
+#if defined(BUILD_MONOLITHIC)
+#define main   xz_test_lzip_decoder_main
+#endif
+
 extern int
-main(int argc, char **argv)
+main(int argc, const char **argv)
 {
 	tuktest_start(argc, argv);
 

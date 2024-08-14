@@ -31,6 +31,8 @@
 #endif
 #define LZMA_CRC_X86_CLMUL_H
 
+#include "crc_common.h"
+
 #if BUILDING_CRC_CLMUL != 32 && BUILDING_CRC_CLMUL != 64
 #	error BUILDING_CRC_CLMUL is undefined or has an invalid value
 #endif

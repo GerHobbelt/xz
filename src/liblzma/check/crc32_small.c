@@ -9,9 +9,10 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "check.h"
+#include <lzma.h>   // check.h produces an error about direct including it and advising to include lzma.h instead.
 #include "crc_common.h"
 
+#ifdef HAVE_SMALL
 
 // The table is used by the LZ encoder too, thus it's not static like
 // in crc64_small.c.
@@ -68,3 +69,5 @@ lzma_crc32(const uint8_t *buf, size_t size, uint32_t crc)
 
 	return ~crc;
 }
+
+#endif

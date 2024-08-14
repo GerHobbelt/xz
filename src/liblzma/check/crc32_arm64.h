@@ -15,6 +15,8 @@
 #ifndef LZMA_CRC32_ARM64_H
 #define LZMA_CRC32_ARM64_H
 
+#include "crc_common.h"
+
 // MSVC always has the CRC intrinsics available when building for ARM64
 // there is no need to include any header files.
 #ifndef _MSC_VER

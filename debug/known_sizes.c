@@ -17,7 +17,9 @@
 #include "lzma.h"
 #include <sys/types.h>
 #include <sys/stat.h>
+#if !defined(_WIN32)
 #include <sys/unistd.h>
+#endif
 #include <stdio.h>
 
 

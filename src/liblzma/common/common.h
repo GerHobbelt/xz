@@ -40,7 +40,9 @@
 #	define lzma_attr_visibility_hidden
 #endif
 
+#ifndef LZMA_API
 #define LZMA_API(type) LZMA_API_EXPORT type LZMA_API_CALL
+#endif
 
 #include "lzma.h"
 

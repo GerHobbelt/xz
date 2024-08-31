@@ -11,6 +11,7 @@
 
 #include "check.h"
 
+#ifdef HAVE_SMALL
 
 static uint64_t crc64_table[256];
 
@@ -55,3 +56,5 @@ lzma_crc64(const uint8_t *buf, size_t size, uint64_t crc)
 
 	return ~crc;
 }
+
+#endif

@@ -275,17 +275,17 @@ parse_real(args_info *args, int argc, char **argv)
 		{ "best",         no_argument,       NULL,  '9' },
 
 		// Filters
-		{ "filters",      optional_argument, NULL,  OPT_FILTERS},
-		{ "filters1",     optional_argument, NULL,  OPT_FILTERS1},
-		{ "filters2",     optional_argument, NULL,  OPT_FILTERS2},
-		{ "filters3",     optional_argument, NULL,  OPT_FILTERS3},
-		{ "filters4",     optional_argument, NULL,  OPT_FILTERS4},
-		{ "filters5",     optional_argument, NULL,  OPT_FILTERS5},
-		{ "filters6",     optional_argument, NULL,  OPT_FILTERS6},
-		{ "filters7",     optional_argument, NULL,  OPT_FILTERS7},
-		{ "filters8",     optional_argument, NULL,  OPT_FILTERS8},
-		{ "filters9",     optional_argument, NULL,  OPT_FILTERS9},
-		{ "filters-help", optional_argument, NULL,  OPT_FILTERS_HELP},
+		{ "filters",      required_argument, NULL,  OPT_FILTERS},
+		{ "filters1",     required_argument, NULL,  OPT_FILTERS1},
+		{ "filters2",     required_argument, NULL,  OPT_FILTERS2},
+		{ "filters3",     required_argument, NULL,  OPT_FILTERS3},
+		{ "filters4",     required_argument, NULL,  OPT_FILTERS4},
+		{ "filters5",     required_argument, NULL,  OPT_FILTERS5},
+		{ "filters6",     required_argument, NULL,  OPT_FILTERS6},
+		{ "filters7",     required_argument, NULL,  OPT_FILTERS7},
+		{ "filters8",     required_argument, NULL,  OPT_FILTERS8},
+		{ "filters9",     required_argument, NULL,  OPT_FILTERS9},
+		{ "filters-help", no_argument,       NULL,  OPT_FILTERS_HELP},
 
 		{ "lzma1",        optional_argument, NULL,  OPT_LZMA1 },
 		{ "lzma2",        optional_argument, NULL,  OPT_LZMA2 },
@@ -612,6 +612,9 @@ parse_real(args_info *args, int argc, char **argv)
 
 		case OPT_SINGLE_STREAM:
 			opt_single_stream = true;
+
+			// Since 5.7.1alpha --single-stream implies --keep.
+			opt_keep_original = true;
 			break;
 
 		case OPT_NO_SPARSE:
@@ -621,7 +624,7 @@ parse_real(args_info *args, int argc, char **argv)
 		case OPT_FILES:
 			args->files_delim = '\n';
 
-		// Fall through
+			FALLTHROUGH;
 
 		case OPT_FILES0:
 			if (args->files_name != NULL)

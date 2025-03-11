@@ -895,7 +895,7 @@ io_open_dest_real(file_pair *pair)
 	// With fstat()/_fstat64() it works.
 	else if (pair->dest_fd != STDOUT_FILENO
 			&& !S_ISREG(pair->dest_st.st_mode)) {
-		message_error("%s: Destination is not a regular file",
+		message_error(_("%s: Destination is not a regular file"),
 				tuklib_mask_nonprint(pair->dest_name));
 
 		// dest_fd needs to be reset to -1 to keep io_close() working.
@@ -993,8 +993,8 @@ io_open_dest(file_pair *pair)
 /// \param      pair    File whose dest_fd should be closed
 /// \param      success If false, the file will be removed from the disk.
 ///
-/// \return     Zero if closing succeeds. On error, -1 is returned and
-///             error message printed.
+/// \return     If closing succeeds, false is returned. On error, an error
+///             message is printed and true is returned.
 static bool
 io_close_dest(file_pair *pair, bool success)
 {

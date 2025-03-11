@@ -161,6 +161,12 @@ set(CMAKE_C_STANDARD 11)
 # On Apple OSes, don't build executables as bundles:
 set(CMAKE_MACOSX_BUNDLE OFF)
 
+# The targets defined here don't support compiling as a unity build. Encoder
+# and decoder source files define different types with the same name, and some
+# internal header files don't have header guards leading to redeclaration
+# errors.
+set(CMAKE_UNITY_BUILD OFF)
+
 # Set CMAKE_INSTALL_LIBDIR and friends. This needs to be done before
 # the LOCALEDIR_DEFINITION workaround below.
 include(GNUInstallDirs)
@@ -354,6 +360,35 @@ if(XZ_NLS)
                             "Install gettext tools or set XZ_NLS=OFF.")
     endif()
 
+    if(WIN32)
+        # The command line tools use UTF-8 on native Windows.
+        # Non-ASCII characters display correctly only when
+        # using UCRT and gettext-runtime >= 0.23.1.
+        check_c_source_compiles(
+                "#define WIN32_LEAN_AND_MEAN
+                #include <windows.h>
+                #include <libintl.h>
+
+                #ifndef _UCRT
+                #error \"Not UCRT\"
+                #endif
+
+                #if LIBINTL_VERSION < 0x001701
+                #error \"gettext-runtime < 0.23.1\"
+                #endif
+
+                int main(void) { return 0; }
+            "
+            USING_UCRT_AND_RECENT_GETTEXT)
+        if(NOT USING_UCRT_AND_RECENT_GETTEXT)
+            message(FATAL_ERROR "Native language support (NLS) was enabled "
+                                "but it requires UCRT and "
+                                "gettext-runtime >= 0.23.1. To build with "
+                                "MSVCRT or old gettext-runtime, "
+                                "set XZ_NLS=OFF.")
+        endif()
+    endif()
+
     # Warn if translated man pages are missing.
     if(UNIX AND NOT EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/po4a/man")
         message(WARNING "Native language support (NLS) was enabled "
@@ -399,6 +434,8 @@ if(CMAKE_C_COMPILER_ID MATCHES GNU|Clang)
                 -Wmissing-prototypes
                 -Wmissing-declarations
                 -Wredundant-decls
+                -Wimplicit-fallthrough
+                -Wimplicit-fallthrough=5
 
                 -Wc99-compat
                 -Wc11-extensions
@@ -1458,12 +1495,57 @@ elseif(BUILD_SHARED_LIBS AND SYMBOL_VERSIONING STREQUAL "generic")
     )
 endif()
 
+# Calculate Libtool-compatible Mach-O versions for Apple OSes.
+# Switching from CMake's or Meson's default Mach-O versioning style to
+# GNU Libtool style is always a backward compatible change because the
+# Libtool style always results in higher Mach-O version values.
+#
+# The other way would be a breaking change, and switching from Autotools
+# to CMake used to result in "Incompatible library version" error from the
+# dynamic linker ("dyld") when trying to run existing executables. This
+# happened because the Mach-O current_version in the CMake-built library
+# was less than the compatibility_version stored in the executable.
+#
+# Example: If on GNU/Linux one had libfoo.so.5.6.7, on macOS one would
+# have libfoo.5.dylib containing the following Mach-O versions:
+#
+#                compatibility_version    current_version
+#     Libtool    12.0.0                   12.7.0
+#     CMake      5.0.0                    5.6.7
+#     Meson      5.0.0                    5.0.0
+#
+# Apple's docs say that the major version is encoded in the library filename,
+# and the Mach-O version fields are for tracking backward compatible changes
+# (minor versions). The default Mach-O versioning styles in CMake and
+# Meson don't store the minor version in the compatibility_version though
+# but Libtool does (using its own idiosyncratic encoding). In practice the
+# lack of minor ABI version tracking doesn't matter much; it's the
+# compatibility between the build systems that counts.
+#
+# It's unclear how much this matters in 2024. It might be that the
+# dynamic linker in macOS >= 12 doesn't enforce the version checks.
+# But this is a simple and safe change so it's fine to do it anyway.
+#
+# Apple docs:
+# https://developer.apple.com/library/archive/documentation/DeveloperTools/Conceptual/DynamicLibraries/100-Articles/DynamicLibraryDesignGuidelines.html
+#
+# This change was made in XZ Utils 5.7.1alpha.
+#
+# * * * * *
+#
+# At least for now the xz package versioning matches the rules used for
+# shared library versioning (excluding development releases) so it is
+# fine to use the package version when setting the liblzma ABI version.
+math(EXPR LIBLZMA_MACHO_COMPATIBILITY_VERSION
+          "${xz_VERSION_MAJOR} + ${xz_VERSION_MINOR} + 1")
+set(LIBLZMA_MACHO_CURRENT_VERSION
+    "${LIBLZMA_MACHO_COMPATIBILITY_VERSION}.${xz_VERSION_PATCH}")
+
 set_target_properties(liblzma PROPERTIES
-    # At least for now the package versioning matches the rules used for
-    # shared library versioning (excluding development releases) so it is
-    # fine to use the package version here.
     SOVERSION "${xz_VERSION_MAJOR}"
     VERSION "${xz_VERSION}"
+    MACHO_COMPATIBILITY_VERSION "${LIBLZMA_MACHO_COMPATIBILITY_VERSION}"
+    MACHO_CURRENT_VERSION "${LIBLZMA_MACHO_CURRENT_VERSION}"
 
     # The name liblzma a mess because in many places "lib" is just a prefix
     # and not part of the actual name. (Don't name a new library this way!)
@@ -1481,8 +1563,8 @@ set_target_properties(liblzma PROPERTIES
     # add "lib" but on Cygwin and MSYS2 the naming will be correct too.
     #
     # On Windows, CMake uses the "lib" prefix with MinGW-w64 but not with
-    # other toolchains. Those those need to be handled specially to get
-    # the DLL file named liblzma.dll instead of lzma.dll.
+    # other toolchains. Those need to be handled specially to get the DLL
+    # file named liblzma.dll instead of lzma.dll.
     OUTPUT_NAME "lzma"
 )
 
@@ -1499,7 +1581,7 @@ endif()
 
 # Create liblzma-config-version.cmake.
 #
-# FIXME: SameMajorVersion is correct for stable releases but it is wrong
+# NOTE: SameMajorVersion is correct for stable releases but it is wrong
 # for development releases where each release may have incompatible changes.
 include(CMakePackageConfigHelpers)
 write_basic_package_version_file(
@@ -1858,6 +1940,7 @@ if(HAVE_DECODERS)
 
     foreach(XZDEC ${XZDEC_TOOLS})
         add_executable("${XZDEC}"
+            src/common/my_landlock.h
             src/common/sysdefs.h
             src/common/tuklib_common.h
             src/common/tuklib_config.h
@@ -1991,6 +2074,7 @@ option(XZ_TOOL_XZ "Build and install the xz command line tool" ON)
 
 if(XZ_TOOL_XZ)
     add_executable(xz
+        src/common/my_landlock.h
         src/common/mythread.h
         src/common/sysdefs.h
         src/common/tuklib_common.h

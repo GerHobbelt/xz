@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: 0BSD
 
-name: OpenBSD
+name: DragonflyBSD
 
 on:
   push:
@@ -12,28 +12,28 @@ on:
 permissions: {}
 
 jobs:
-  OpenBSD:
+  DragonflyBSD:
     runs-on: ubuntu-latest
-    name: OpenBSD
+    name: DragonflyBSD
     steps:
       - uses: actions/checkout@v4
 
-      - name: Test in OpenBSD
-        uses: vmactions/openbsd-vm@284abc8fb4cd88f69946a0d4c27c4eecd82fdde9 #v1.1.7
+      - name: Test in DragonflyBSD
+        id: test
+        uses: vmactions/dragonflybsd-vm@e3c420e8a2362c2496fca6e76a291abd46f5d8e7 #v1.1.0
         with:
           usesh: true
           prepare: >
-            /usr/sbin/pkg_add -I -v
-            autoconf-2.72p0
-            automake-1.16.5
+            pkg install -y
+            autoconf
+            automake
             gettext-tools
             libtool
             m4
           run: |
             set -e
-            export AUTOCONF_VERSION=2.72
-            export AUTOMAKE_VERSION=1.16
             uname -a
             ./autogen.sh --no-po4a
-            ./configure --disable-static --enable-debug --enable-werror --disable-nls --enable-external-sha256
+            # Innocent putc() triggers strict-overflow warnings.
+            ./configure --disable-static --enable-debug --enable-werror CFLAGS='-g -O2 -pipe -Wno-error=strict-overflow'
             make -j4 check

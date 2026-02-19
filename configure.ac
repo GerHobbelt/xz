@@ -1008,8 +1008,8 @@ AC_CHECK_DECL([CLOCK_MONOTONIC], [AC_DEFINE([HAVE_CLOCK_MONOTONIC], [1],
 # Find the best function to set timestamps.
 AC_CHECK_FUNCS([futimens futimes futimesat utimes _futime utime], [break])
 
-# This is nice to have but not mandatory.
-AC_CHECK_FUNCS([posix_fadvise])
+# These are nice to have but not mandatory.
+AC_CHECK_FUNCS([getrlimit posix_fadvise])
 
 TUKLIB_PROGNAME
 TUKLIB_INTEGER
@@ -1168,7 +1168,8 @@ int main(void)
 
 # Check for ARM64 CRC32 instruction runtime detection.
 #
-#   - getauxval() is supported on Linux.
+#   - getauxval() is supported on Linux. We also need HWCAP_CRC32 which was
+#     added in glibc 2.24.
 #
 #   - elf_aux_info() is supported on FreeBSD and OpenBSD >= 7.6.
 #
@@ -1180,6 +1181,9 @@ int main(void)
 #
 AS_IF([test "x$enable_arm64_crc32" = xyes], [
 	AC_CHECK_FUNCS([getauxval elf_aux_info sysctlbyname], [break])
+	AC_CHECK_DECL([HWCAP_CRC32], [AC_DEFINE([HAVE_HWCAP_CRC32], [1],
+		[Define to 1 if 'HWCAP_CRC32' is declared in <sys/auxv.h>.])],
+		[], [[#include <sys/auxv.h>]])
 ])
 
 

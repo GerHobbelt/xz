@@ -1379,6 +1379,13 @@ if(XZ_ARM64_CRC32)
         check_symbol_exists(getauxval sys/auxv.h HAVE_GETAUXVAL)
         tuklib_add_definition_if(liblzma HAVE_GETAUXVAL)
 
+        # With getauxval() we also need HWCAP_CRC32 which was
+        # added in glibc 2.24.
+        if(HAVE_GETAUXVAL)
+            check_symbol_exists(HWCAP_CRC32 sys/auxv.h HAVE_HWCAP_CRC32)
+            tuklib_add_definition_if(liblzma HAVE_HWCAP_CRC32)
+        endif()
+
         # elf_aux_info() is supported on FreeBSD and OpenBSD >= 7.6.
         check_symbol_exists(elf_aux_info sys/auxv.h HAVE_ELF_AUX_INFO)
         tuklib_add_definition_if(liblzma HAVE_ELF_AUX_INFO)
@@ -2197,6 +2204,9 @@ this many MiB of RAM if xz cannot determine the amount at runtime")
         check_symbol_exists(optreset getopt.h HAVE_OPTRESET)
         tuklib_add_definition_if(xz HAVE_OPTRESET)
     endif()
+
+    check_symbol_exists(getrlimit sys/resource.h HAVE_GETRLIMIT)
+    tuklib_add_definition_if(xz HAVE_GETRLIMIT)
 
     check_symbol_exists(posix_fadvise fcntl.h HAVE_POSIX_FADVISE)
     tuklib_add_definition_if(xz HAVE_POSIX_FADVISE)
